@@ -9,7 +9,7 @@ set -e
 echo "Select Language / Scegli la lingua: "
 echo "1) English (Default)"
 echo "2) Italiano"
-read -p "> " LANG_CHOICE
+read -r -p "> " LANG_CHOICE
 LANG_CHOICE=${LANG_CHOICE:-1}
 
 if [ "$LANG_CHOICE" = "2" ]; then
@@ -47,7 +47,7 @@ fi
 ask_permission() {
     local prompt="$1"
     while true; do
-        read -p "$prompt $MSG_YESNO: " yn
+        read -r -p "$prompt $MSG_YESNO: " yn
         case $yn in
             [Yy]* ) return 0;;
             [Nn]* ) return 1;;

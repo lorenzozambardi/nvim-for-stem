@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 echo "Select Language / Scegli la lingua: "
 echo "1) English (Default)"
 echo "2) Italiano"
-read -p "> " LANG_CHOICE
+read -r -p "> " LANG_CHOICE
 LANG_CHOICE=${LANG_CHOICE:-1}
 
 if [ "$LANG_CHOICE" = "2" ]; then
@@ -55,7 +55,7 @@ echo "========================================"
 
 echo ""
 echo "$MSG_WORK_DIR"
-read -p "$MSG_WORK_PROMPT" WORKSPACE_PATH
+read -r -p "$MSG_WORK_PROMPT" WORKSPACE_PATH
 WORKSPACE_PATH=${WORKSPACE_PATH:-"~/Documents/uni"}
 WORKSPACE_PATH=${WORKSPACE_PATH%/}
 

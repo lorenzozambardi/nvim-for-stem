@@ -9,14 +9,13 @@ set -e
 echo "Select Language / Scegli la lingua: "
 echo "1) English (Default)"
 echo "2) Italiano"
-read -p "> " LANG_CHOICE
+read -r -p "> " LANG_CHOICE
 LANG_CHOICE=${LANG_CHOICE:-1}
 
 if [ "$LANG_CHOICE" = "2" ]; then
     MSG_TITLE="Disinstallazione Ambiente Neovim"
     MSG_PROMPT="Vuoi disinstallare"
     MSG_SYS_DEP="Rimozione pacchetti di sistema (Homebrew)..."
-    MSG_TEXLAB="Rimozione Texlab (LaTeX LSP)..."
     MSG_PY_DEP="Rimozione pacchetti Python (pip)..."
     MSG_NPM="Rimozione pacchetti Node (npm)..."
     MSG_FONT="Rimozione Roboto Mono Nerd Font..."
@@ -30,7 +29,6 @@ else
     MSG_TITLE="Neovim Environment Uninstaller"
     MSG_PROMPT="Do you want to uninstall"
     MSG_SYS_DEP="Removing system packages (Homebrew)..."
-    MSG_TEXLAB="Removing Texlab (LaTeX LSP)..."
     MSG_PY_DEP="Removing Python packages (pip)..."
     MSG_NPM="Removing Node packages (npm)..."
     MSG_FONT="Removing Roboto Mono Nerd Font..."
@@ -45,7 +43,7 @@ fi
 ask_permission() {
     local prompt="$1"
     while true; do
-        read -p "$prompt $MSG_YESNO: " yn
+        read -r -p "$prompt $MSG_YESNO: " yn
         case $yn in
             [Yy]* ) return 0;;
             [Nn]* ) return 1;;
