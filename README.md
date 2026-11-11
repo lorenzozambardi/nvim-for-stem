@@ -1,427 +1,219 @@
-# Neovim Configuration Guide
+# `nvim-for-stem`
 
-## Table of Contents
+**Zero-friction Neovim configuration for STEM students, mathematicians, and researchers — combining live LaTeX typesetting, context-aware math snippets, scientific Python tooling, and Markdown note-taking.**
 
-1. [Overview](#1-overview)
-2. [Directory Structure](#2-directory-structure)
-3. [General Settings](#3-general-settings)
-4. [Key Features](#4-key-features)
-5. [Complete Keymap Reference](#5-complete-keymap-reference)
-6. [Plugin Categories](#6-plugin-categories)
-7. [Language Support](#7-language-support)
-8. [LaTeX Snippets Reference](#8-latex-snippets-reference)
-9. [Quick Start Guide](#9-quick-start-guide)
+[![Neovim](https://img.shields.io/badge/Neovim-%3E%3D%200.11-57A143?logo=neovim&logoColor=white)](https://neovim.io/)
+[![Lua](https://img.shields.io/badge/Lua-Configured-2C2D72?logo=lua&logoColor=white)](https://www.lua.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey)](#quick-installation)
 
 ---
 
-### 1. Overview
+## Philosophy & Gilles Castel Inspiration
 
-Modern Neovim setup optimized for Windows and Linux, focused on LaTeX writing, Python development, and general text editing with:
+Taking mathematical notes or authoring technical papers should happen at the speed of thought. Every extra keystroke spent balancing braces, typing `\frac{}{}`, or manually triggering a PDF rebuild pulls focus away from the underlying mathematics.
 
-- **Plugin Manager**: Lazy.nvim with lazy loading
-- **Theme**: OneDark (warmer variant)
-- **Leader Key**: `;` (semicolon)
-- **Primary Use Cases**: LaTeX documents, Python code, Markdown writing, academic writing
+This configuration is directly inspired by **Gilles Castel**'s landmark workflow (*["How I'm able to take notes in mathematics lectures using LaTeX and Vim"](https://castel.dev/post/lecture-notes-1/)*) and brings that paradigm to a modern, pure-Lua Neovim stack:
 
-**Key Integrations:**
-- SumatraPDF (Windows) / Zathura (Linux) for LaTeX preview
-- GitHub Copilot for AI assistance
-- FZF for file searching
-- LSP (Pyright, Texlab) for intelligent editing
-- Treesitter for advanced syntax highlighting
+- **Pure-Lua Auto-Expanding Snippets (`LuaSnip v2`)**: Migrated from UltiSnips to `LuaSnip` with `enable_autosnippets = true` and `ecma` regex triggers (`regTrig = true`), providing **115 snippet rules (92 autosnippets)** for fractions (`a/`, `(x+y)/`), auto-subscripts (`x1`, `x_12`), Greek letters, blackboard bold sets, and environments.
+- **Hybrid Math-Zone Detection (`snippets/tex_utils.lua`)**: Math-only snippets trigger exclusively inside math zones and are suppressed inside `\text{...}` commands. Detection combines:
+  1. **VimTeX** (`vimtex#syntax#in_mathzone()`) for `.tex` files,
+  2. **Treesitter AST** inspection (`inline_formula`, `displayed_equation`, `math_environment`, `latex_block`) with injection awareness, and
+  3. **Multi-line buffer scanner** fallback for `$ ... $`, `$$ ... $$`, and standard LaTeX math environments (`equation`, `align`, `cases`, `matrix`, etc.).
+- **Unified Math Authoring Across LaTeX & Markdown**: `LuaSnip` extends `markdown` with the `tex` snippet library (`ls.filetype_extend('markdown', { 'tex' })`), while display-math (`dm`) automatically adapts between `\[ ... \]` in `.tex` and `$$ ... $$` in `.md`.
+- **Hands-Free Build & SyncTeX**: `.tex` buffers auto-save after `3000 ms` of inactivity (`CursorHold` / `CursorHoldI`), feeding `latexmk` + `texlab` and bidirectional SyncTeX in Zathura (Linux), Skim (macOS), or SumatraPDF (Windows).
 
 ---
 
-### 2. Directory Structure
+## Visual Showcase
 
-This repository contains three distinct configuration directories to provide tailored support for all operating systems:
-- `linux/`: Configuration tailored for Linux environments (uses Zathura for PDF viewing, Unix paths, bash/zsh terminals).
-- `windows/`: Configuration tailored for Windows environments (uses SumatraPDF for PDF viewing, Windows paths).
-- `macos/`: Configuration tailored for macOS environments (uses Skim for PDF viewing, Unix paths, bash/zsh terminals).
+### LaTeX Live Authoring & SyncTeX
 
-> **Note**: All configurations are kept completely identical in terms of plugins, shortcuts, and features (including advanced Markdown preview, Treesitter syntax, and Python debugging). The only differences between them are the absolute file paths and the PDF viewer setup.
+![LaTeX Live Authoring and SyncTeX](assets/tex_demo.gif)
+
+*Live authoring in `test.tex`: auto-expanding `LuaSnip` math delimiters (`dm`, `mk`), integrals (`int`), blackboard bold sets (`RR`), Greek auto-triggers (`\theta`, `\pi`), visual bold wrapping, `<C-o>` compilation with VimTeX/`latexmk`, and side-by-side Zathura PDF rendering with bidirectional SyncTeX inverse search.*
+
+### Python Scientific Environment & LSP
+
+![Python Scientific Environment and LSP](assets/py_demo.gif)
+
+*Editing `test.py` with Pyright LSP diagnostics and `nvim-cmp` autocompletion, rainbow `indent-blankline` guides, `nvim-ufo` Treesitter-backed code folding, Black auto-formatting on save via `conform.nvim`, and single-key execution (`;r`) in a right vertical split terminal.*
+
+### Markdown & Technical Note-Taking
+
+![Markdown and Technical Note-Taking](assets/md_demo.gif)
+
+*Technical note-taking in `test.md`: the same `LuaSnip` math-zone triggers (`dm`, `//` fractions, `int`, Greek tokens) expand natively inside Markdown buffers while `markdown-preview.nvim` (`;mp`) renders `[toc]` navigation and KaTeX equations in real time.*
 
 ---
 
-### 3. General Settings
+## Modular Architecture
 
-```lua
-vim.g.mapleader = ";"                    -- Leader key
-vim.opt.number = true                    -- Show line numbers
-vim.opt.relativenumber = true            -- Relative line numbers
-vim.opt.cursorline = true                -- Highlight current line
-vim.opt.clipboard = "unnamedplus"        -- System clipboard
-vim.opt.ignorecase = true                -- Case-insensitive search
-vim.opt.smartcase = true                 -- Smart case when uppercase present
-vim.opt.spell = false                    -- Spell check (Italian dictionary default)
-vim.opt.spelllang = 'it'                 -- Italian dictionary
-vim.opt.selection = "inclusive"
-vim.opt.virtualedit = "onemore"
+The repository provides OS-tailored configuration trees with identical workflows and keybindings, differing only in PDF viewer SyncTeX integration and platform build hooks:
+
+```text
+nvim-for-stem/
+├── assets/                          # Compressed demo GIFs for documentation
+├── linux/                           # Linux config (Zathura + xdotool / Wayland-safe SyncTeX)
+├── macos/                           # macOS config (Skim displayline SyncTeX)
+├── windows/                         # Windows config (SumatraPDF + Zig/GCC/CL Treesitter compilers)
+├── install_linux.sh                 # Automated installer for Arch (pacman) & Debian/Ubuntu (apt)
+├── install_macos.sh                 # Automated installer for macOS (Homebrew)
+├── install_windows.bat              # Windows installer entrypoint
+├── windows_install_backend.ps1      # PowerShell installer (Winget + SumatraPDF inverse search)
+├── uninstall_linux.sh               # Interactive Linux uninstaller
+├── uninstall_macos.sh               # Interactive macOS uninstaller
+├── uninstall_windows.bat            # Windows uninstaller entrypoint
+├── windows_uninstall_backend.ps1    # PowerShell uninstaller
+├── README.md                        # English documentation
+├── README_ITA.md                    # Italian documentation
+└── LICENSE                          # MIT License
 ```
 
-**Cursor Styles:**
-- Normal/Visual: Thin vertical bar
-- Insert: Thick vertical bar  
-- Replace: Horizontal bar
+Each OS directory (`linux/`, `macos/`, `windows/`) follows a clean modular layout:
+
+```text
+<os>/
+├── init.lua                         # lazy.nvim bootstrap, pynvim/nvr check, module loader
+└── lua/
+    ├── config/
+    │   ├── options.lua              # Leader key (;), relative numbers, Italian spelllang, guicursor, completeopt
+    │   ├── keymaps.lua              # Window cycling, visual indent/wrapping, LaTeX formatting & compile
+    │   └── autocmds.lua             # Custom CursorLineNr (#f48c06) & TexMathDelimiter (#bb70d2) highlights
+    ├── plugins/
+    │   ├── ui.lua                   # alpha-nvim dashboard, onedark (warmer), lualine, rainbow indent-blankline
+    │   ├── editor.lua               # nvim-tree, fzf.vim, outline.nvim, nvim-autopairs, nvim-ufo, copilot.vim, markdown plugins
+    │   ├── completion.lua           # LuaSnip v2 (autosnippets + markdown->tex) & nvim-cmp (LSP, buffer, path, cmdline)
+    │   ├── lsp.lua                  # Neovim 0.11+ native vim.lsp.config for texlab & pyright
+    │   ├── treesitter.lua           # nvim-treesitter parsers (lua, python, js, html, css, latex, markdown)
+    │   └── languages/
+    │       ├── latex.lua            # VimTeX viewer config, 3s auto-save on *.tex, Wayland inverse-search optimization
+    │       └── python.lua           # conform.nvim (Black on save), nvim-dap / nvim-dap-python, <Leader>r split runner
+    └── snippets/
+        ├── tex.lua                  # 115 LuaSnip rules (92 autosnippets) across 9 categories
+        └── tex_utils.lua            # Hybrid in_mathzone (VimTeX -> Treesitter -> buffer scanner), get_visual, line_begin
+```
+
+### Platform-Specific Differences
+
+| Component | Linux (`linux/`) | macOS (`macos/`) | Windows (`windows/`) |
+| :--- | :--- | :--- | :--- |
+| **PDF Viewer (VimTeX & `texlab`)** | `zathura_simple` (`zathura --synctex-forward`) | `skim` (`/Applications/Skim.app/.../displayline`) | `general` (`SumatraPDF.exe -reuse-instance -forward-search`) |
+| **Inverse Search** | Minimal `nvim --clean` callback (avoids Wayland RAM leaks) | Skim SyncTeX preset | Configured in `SumatraPDF-settings.txt` via `nvr` |
+| **LuaSnip `jsregexp`** | Built via `make install_jsregexp` | Built via `make install_jsregexp` | Pure Lua / `ecma` engine (no `make` build step) |
+| **Treesitter Compilers** | System `gcc` | System `clang` / `gcc` | `zig`, `gcc`, `clang`, `cl` (`prefer_git = true`) |
+| **`markdown-preview.nvim`** | `mkdp#util#install()` | `mkdp#util#install()` | `cd app && yarn install` |
 
 ---
 
-### 4. Key Features
+## Keybindings & Snippets Cheat-Sheet
 
-#### Dashboard (Alpha.nvim)
-Custom ASCII art with quick actions upon launching Neovim:
-- `f` - Find files in `~/Documents/` folder via FZF
-- `r` - Recent files history
-- `e` - Open a new empty buffer
-- `c` - Open the Neovim configuration directory
-- `u` - Update plugins via Lazy
-- `q` - Quit Neovim
+> **Leader key:** `;` (semicolon)
 
-#### Smart Tab Behavior
-The Tab key intelligently handles context:
-1. UltiSnips expansion/navigation.
-2. Completion menu navigation.
-3. Regular tab functionality.
-*(Note: GitHub Copilot uses `Alt-Space` instead of Tab to avoid conflicts).*
+### General, Navigation & Folding
 
-#### Auto-save for LaTeX
-LaTeX files (`*.tex`) automatically save every 3 seconds of inactivity, triggering a re-render in the PDF viewer without manual intervention.
+| Key | Mode | Action | Source |
+| :--- | :--- | :--- | :--- |
+| `f` / `r` / `e` / `c` / `u` / `q` | Dashboard | Find files (`~/Documents/uni/`), Recent, New file, Config, `:Lazy sync`, Quit | [`ui.lua`](linux/lua/plugins/ui.lua) |
+| `<Tab>` / `<S-Tab>` | Normal | Focus next / previous window split | [`keymaps.lua`](linux/lua/config/keymaps.lua) |
+| `<C-n>` | Normal | Toggle `nvim-tree` rooted at `~/Documents/uni` | [`editor.lua`](linux/lua/plugins/editor.lua) |
+| `<C-k>` | Normal | Toggle document symbol `Outline` | [`editor.lua`](linux/lua/plugins/editor.lua) |
+| `zR` / `zM` | Normal | Open all folds / Close all folds (`nvim-ufo`) | [`editor.lua`](linux/lua/plugins/editor.lua) |
+| `za` / `zo` / `zc` | Normal | Toggle / Open / Close fold under cursor | Built-in / `nvim-ufo` |
 
-#### Code Folding
-Uses Treesitter and indentation for intelligent code folding (via `nvim-ufo`), allowing you to cleanly collapse large functions and classes.
+### Visual Mode Editing
 
-#### Markdown Live Preview
-Integrated Markdown rendering directly inside the editor, plus browser-based live preview support.
+| Key | Mode | Action | Source |
+| :--- | :--- | :--- | :--- |
+| `<Tab>` / `<S-Tab>` | Visual (`x`) | Indent / unindent lines while keeping visual selection (Select mode left intact for snippets) | [`keymaps.lua`](linux/lua/config/keymaps.lua) |
+| `'`, `"`, `$` | Visual (`v`) | Wrap selection in `'...'`, `"..."`, or `$...$` and keep selection | [`keymaps.lua`](linux/lua/config/keymaps.lua) |
+| `(`, `[`, `{` | Visual (`v`) | Wrap selection in `(...)`, `[...]`, or `{...}` and keep selection | [`keymaps.lua`](linux/lua/config/keymaps.lua) |
+| `<M-b>` / `<M-i>` | Visual (`v`) | Wrap selection in `\textbf{...}` / `\textit{...}` | [`keymaps.lua`](linux/lua/config/keymaps.lua) |
 
----
+### Insert Mode Completion, Snippets & AI
 
-### 5. Complete Keymap Reference
+| Key | Mode | Action | Source |
+| :--- | :--- | :--- | :--- |
+| `<Tab>` / `<S-Tab>` | Insert / Select | Expand `LuaSnip` snippet or jump forward / backward across placeholders | [`completion.lua`](linux/lua/plugins/completion.lua) |
+| `<CR>` | Insert | Confirm `nvim-cmp` selection (`select = false`) | [`completion.lua`](linux/lua/plugins/completion.lua) |
+| `<C-j>` | Insert / Select | Select next `nvim-cmp` item | [`completion.lua`](linux/lua/plugins/completion.lua) |
+| `<Up>` / `<Down>` | Insert / Select | Navigate `nvim-cmp` menu when an entry is selected | [`completion.lua`](linux/lua/plugins/completion.lua) |
+| `<M-Space>` | Insert | Accept GitHub Copilot suggestion (`copilot_no_tab_map = true`) | [`editor.lua`](linux/lua/plugins/editor.lua) |
+| `<C-l>` | Insert | Auto-fix previous misspelled word using Vim spellcheck (`[s1z=`) | [`keymaps.lua`](linux/lua/config/keymaps.lua) |
 
-#### Dashboard Actions
-| Key   | Action       | Description              |
-|-------|--------------|--------------------------|
-| `f`   | Find Files   | FZF search in Documents directory |
-| `r`   | Recent Files | File history via FZF     |
-| `e`   | New File     | Create new buffer        |
-| `c`   | Config       | Open config directory via FZF |
-| `u`   | Update       | Sync plugins via Lazy    |
-| `q`   | Quit         | Exit Neovim              |
+### Language Actions
 
-#### Navigation & Windows
-| Key      | Mode   | Action           | Description              |
-|----------|--------|------------------|--------------------------|
-| `<Tab>`  | Normal | Window Navigation| Focus next window split  |
-| `<S-Tab>`| Normal | Window Navigation| Focus previous window split |
-| `<C-n>`  | Normal | File Tree        | Toggle nvim-tree in `~/Documents/uni/` |
-| `<C-k>`  | Normal | Outline          | Toggle document outline  |
+| Key | Mode | Action | Source |
+| :--- | :--- | :--- | :--- |
+| `<C-o>` | Normal | Save buffer and run `:VimtexCompile` | [`keymaps.lua`](linux/lua/config/keymaps.lua) |
+| `;r` (`<Leader>r`) | Normal | Save and run current Python file in a right vertical split terminal | [`python.lua`](linux/lua/plugins/languages/python.lua) |
+| `;mp` (`<Leader>mp`) | Normal | Toggle live browser preview (`:MarkdownPreviewToggle`) | [`editor.lua`](linux/lua/plugins/editor.lua) |
 
-#### Text Editing (Visual Mode)
-These shortcuts apply to the currently selected text without losing the visual selection.
-| Key       | Mode   | Action       | Description          |
-|-----------|--------|--------------|----------------------|
-| `<Tab>`   | Visual | Indent       | Increase indent, keep selection |
-| `<S-Tab>` | Visual | Unindent     | Decrease indent, keep selection |
-| `'`       | Visual | Wrap Quotes  | Wrap selection in single quotes `'text'` |
-| `"`       | Visual | Wrap Quotes  | Wrap selection in double quotes `"text"` |
-| `$`       | Visual | Math Mode    | Wrap selection in LaTeX dollar signs `$text$` |
-| `(`       | Visual | Wrap Parens  | Wrap selection in parentheses `(text)` |
-| `[`       | Visual | Wrap Brackets| Wrap selection in square brackets `[text]` |
-| `{`       | Visual | Wrap Braces  | Wrap selection in curly braces `{text}` |
+### LaTeX & Markdown Snippets (`lua/snippets/tex.lua`)
 
-#### LaTeX Specific
-| Key      | Mode   | Action  | Description        |
-|----------|--------|---------|--------------------|
-| `<M-b>`  | Visual | Bold    | Wrap selection in `\textbf{}` |
-| `<M-i>`  | Visual | Italic  | Wrap selection in `\textit{}` |
-| `<C-o>`  | Normal | Compile | Save and trigger VimTeX compile |
-| `<C-l>`  | Insert | Spell Fix | Auto-correct previous misspelled word |
+`lua/snippets/tex.lua` defines **115 snippet rules (92 autosnippets)** across 9 categories, active in both `.tex` and `.md` buffers. Rules marked `(Tab)` require pressing `<Tab>`; all others auto-expand immediately.
 
-#### Code Execution & Debugging
-| Key       | Mode   | Action      | Description       |
-|-----------|--------|-------------|-------------------|
-| `<Leader>r` | Normal | Run Python  | Save and execute the python script in a right vertical split terminal |
-
-#### Markdown
-| Key         | Mode   | Action          | Description       |
-|-------------|--------|-----------------|-------------------|
-| `<Leader>mp`| Normal | Preview Toggle  | Toggle live Markdown preview in web browser |
-
-#### Code Folding
-| Key  | Mode   | Action    | Description       |
-|------|--------|-----------|-------------------|
-| `zR` | Normal | Open All  | Open all folds in the document |
-| `zM` | Normal | Close All | Close all folds in the document |
-| `za` | Normal | Toggle    | Toggle fold under the cursor |
-| `zo` | Normal | Open      | Open fold under the cursor |
-| `zc` | Normal | Close     | Close fold under the cursor |
-
-#### Completion & Snippets
-| Key       | Mode   | Action     | Description                    |
-|-----------|--------|------------|-------------------------------|
-| `<M-Space>`| Insert | Copilot   | Accept GitHub Copilot suggestion |
-| `<Tab>`   | Insert | Snippets  | Expand snippet or jump to next snippet field |
-| `<S-Tab>` | Insert | Previous   | Jump to previous snippet field |
-| `<CR>`    | Insert | Confirm    | Confirm completion (without auto-selecting the first item) |
-| `<C-j>`   | Insert | Next Item  | Move to next completion item |
-| `<Up>`/`<Down>` | Insert | Navigate | Navigate through completion options |
+| Category | Triggers | Notes & Context |
+| :--- | :--- | :--- |
+| **1. Document & Environments** | `template` (Tab), `beg`, `table` (Tab), `fig` (Tab), `enum`, `item`, `desc` (Tab), `pac` (Tab), `ali`, `case`, `bigfun`, `SI`, `letw` | Line-start environments (`beg`, `enum`, `item`, `ali`, etc.) and common macros |
+| **2. Math Delimiters** | `mk`, `dm`, `...` | `mk` -> `$...$`; `dm` -> `\[...\]` (`.tex`) or `$$...$$` (`.md`); `...` -> `\ldots` |
+| **3. Fractions & Calculus** | `//`, `7/`, `\alpha/`, `(1+2)/`, `sqrt`, `int`, `part` (Tab), `sum` (Tab), `taylor` (Tab), `lim` (Tab), `limsup` (Tab), `prod` (Tab) | Math zone; regex fraction captures balanced parens or tokens before `/` |
+| **4. Matrices & Delimiters** | `pmat`, `bmat`, `cvec`, `()` (Tab), `\|\|` (Tab), `{}` (Tab), `[]` (Tab), `lra`, `ceil`, `floor`, `conj`, `norm`, `mcal`, `bf`, `txt`, `sts` | `pmat`, `ceil`, `floor`, `txt` work anywhere; others gated by `in_mathzone` |
+| **5. Powers & Subscripts** | `sr` (`^2`), `cb` (`^3`), `td` (`^{}`), `__` (`_{}`), `x1` -> `x_1`, `x_12` -> `x_{12}`, `xnn`, `ynn`, `xii`, `yii`, `xjj`, `yjj`, `xp1`, `xmm`, `R0+`, `rij` (Tab) | Math zone; supports automatic single- and double-digit subscripts |
+| **6. Symbols, Sets & Logic** | `==`, `!=`, `<=`, `>=`, `=>`, `=<`, `iff`, `->`, `<->`, `!>`, `invs`, `cmpl`, `\\\`, `>>`, `<<`, `~~`, `ooo`, `lll`, `nabl`, `xx`, `**`, `eps`, `<!`, `<>`, `set`, `sbst`, `notin`, `inn`, `Nn`, `UU`, `uuu`, `nnn`, `OO`, `NN`, `RR`, `QQ`, `ZZ`, `HH`, `DD`, `Ee`, `EE`, `AA`, `PP` | All 43 triggers are math-zone autosnippets |
+| **7. Accents, Trig & Greek** | `bar`, `xbar`, `hat`, `xhat`; `sin`, `cos`, `arccot`, `cot`, `csc`, `ln`, `log`, `exp`, `star`, `perp`; `arcsin`, `arccos`, `arctan`, `arccsc`, `arcsec`, `pi`, `zeta`, `to`, `delta`, `kappa`, `lambda`, `mu`, `nu`, `rho`, `sigma`, `tau`, `omega` | Math zone; auto-prefixes `\` unless already preceded by `\` |
+| **8. Symbolic Evaluation** | `sympy` (Tab) -> `sympy ... sympy` (Tab), `math` (Tab) -> `math ... math` (Tab) | Evaluates expressions via `python3` (`sympy`) or `wolframscript` into LaTeX |
+| **9. TikZ & PGFPlots** | `plot` (Tab), `surf` (Tab), `node` (Tab) | 2D axis plot, 3D surface (`colormap/viridis`), and TikZ node templates |
 
 ---
 
-### 6. Plugin Categories
+## Quick Installation
 
-#### UI & Appearance
-- **alpha-nvim**: Custom dashboard with ASCII art and shortcuts.
-- **onedark.nvim**: Theme (warmer variant).
-- **lualine.nvim**: Status line with git branch, diagnostics, and file info.
-- **indent-blankline.nvim**: Rainbow colored indent guides to easily match indentation levels.
+Each installer script supports **English** and **Italian** prompts, lets you customize your default workspace path for `nvim-tree` and `FZF` (default: `~/Documents/uni`), installs system tools and **RobotoMono Nerd Font**, and copies the OS-specific configuration into Neovim's config directory.
 
-#### File Management & Navigation
-- **nvim-tree.lua**: File explorer sidebar (`Ctrl-N`).
-- **fzf + fzf.vim**: Blazing fast fuzzy finder for files and buffers.
-- **outline.nvim**: Document structure tree (`Ctrl-K`).
+### Automated Installers
 
-#### Code Editing & Highlighting
-- **nvim-treesitter**: Advanced syntax highlighting and code parsing for accurate folding.
-- **nvim-autopairs**: Auto-close brackets, quotes, and parentheses.
-- **nvim-ufo**: Intelligent and ultra-fast code folding.
-- **copilot.vim**: AI-powered code suggestions.
+- **Linux** (Arch `pacman` & Debian/Ubuntu `apt`):
+  ```bash
+  git clone https://github.com/Lorenzo1901/nvim.git && cd nvim && bash install_linux.sh
+  ```
+- **macOS** (Homebrew):
+  ```bash
+  git clone https://github.com/Lorenzo1901/nvim.git && cd nvim && bash install_macos.sh
+  ```
+- **Windows** (`winget`, Windows 10/11):
+  ```cmd
+  git clone https://github.com/Lorenzo1901/nvim.git && cd nvim && install_windows.bat
+  ```
 
-#### Completion System
-- **nvim-cmp**: Highly customizable completion engine.
-- **UltiSnips**: Snippet management system.
-- Sources: LSP, buffer words, file paths, and command line history.
+After installation:
+1. Set your terminal font to **`RobotoMono Nerd Font`**.
+2. Launch `nvim` — `lazy.nvim` will automatically clone and build all plugins (and `nvim-treesitter` parsers).
+3. Run `:checkhealth` to verify LSP, Python, and TeX integrations.
 
-#### Utilities
-- **render-markdown.nvim**: In-editor markdown rendering for headings, bullets, code blocks.
-- **markdown-preview.nvim**: Browser-based live preview for markdown files.
+### System Prerequisites
 
----
+The automated scripts handle these dependencies, or you can install them manually:
 
-### 7. Language Support
+| Category | Linux (`pacman` / `apt`) | macOS (`brew`) | Windows (`winget` / manual) |
+| :--- | :--- | :--- | :--- |
+| **Core Editor & CLI** | `neovim` (>= 0.11), `git`, `ripgrep`, `fzf`, `nodejs`, `npm`, `luarocks`, `perl`, `ffmpeg`, `base-devel` / `build-essential`, `pkgconf` / `pkg-config`, `cairo`, `pango` | `neovim` (>= 0.11), `git`, `ripgrep`, `fzf`, `node`, `luarocks`, `perl`, `ffmpeg`, `pkg-config`, `cairo`, `pango` | `Neovim.Neovim`, `Git.Git`, `BurntSushi.ripgrep.MSVC`, `junegunn.fzf`, `OpenJS.NodeJS`, `DEVCOM.Lua`, `StrawberryPerl.StrawberryPerl`, `Gyan.FFmpeg`, Visual Studio 2022 Build Tools |
+| **LaTeX & SyncTeX** | `texlive-meta` / `texlive-full`, `texlab`, `zathura`, `zathura-pdf-mupdf`, `xdotool` | `mactex` (cask), `texlab`, `skim` (cask) | `MiKTeX.MiKTeX`, `texlab` (GitHub release), `SumatraPDF.SumatraPDF` |
+| **Python & LSP** | `python3`, `pip3`, `pyright` (`npm -g`), `pynvim`, `neovim-remote`, `black`, `manim` (`pip3`) | `python`, `pyright` & `tree-sitter-cli` (`npm -g`), `pynvim`, `neovim-remote`, `black`, `manim` (`pip3`) | `Python.Python.3.11`, `pyright`, `tree-sitter-cli`, `yarn`, `neovim` (`npm -g`), `pynvim`, `neovim-remote`, `black`, `manim` (`pip`) |
+| **Font** | `RobotoMono Nerd Font` (`~/.local/share/fonts/RobotoMonoNerd`) | `font-roboto-mono-nerd-font` (cask) | `RobotoMono Nerd Font` (`AppData\Local\Microsoft\Windows\Fonts`) |
+| **Optional (Snippets)** | `sympy` (`pip`), `wolframscript` | `sympy` (`pip`), `wolframscript` | `sympy` (`pip`), `wolframscript` |
 
-#### LaTeX (VimTeX + Texlab LSP)
-**Setup Requirements:**
-- LaTeX distribution (TeX Live / MiKTeX)
-- **Linux:** Zathura PDF viewer
-- **Windows:** SumatraPDF viewer
-- **macOS:** Skim PDF viewer
-- Texlab LSP: installed via automatic scripts (`cargo` / `brew` / `winget`)
+### Uninstallation
 
-**Features:**
-- Auto-save and compile via `latexmk`.
-- PDF preview with automatic SyncTeX (forward and inverse search).
-- Custom highlight colors for math delimiters (`$`, `\[`, `\]`).
-- Out-of-the-box snippet integration via UltiSnips.
-
-#### Python (Pyright LSP + Black + DAP)
-**Setup Requirements:**
-- Python 3.x
-- Pyright: `npm install -g pyright`
-- Black formatter: `pip install black`
-
-**Features:**
-- Static type checking and autocompletion via Pyright.
-- Auto-formatting on save via `conform.nvim` using Black.
-- Split-terminal script execution using `<Leader>r`.
-- DAP (Debug Adapter Protocol) support via `nvim-dap` and `nvim-dap-python` for step-by-step debugging.
-
-#### Additional Languages
-- **Markdown**: Full preview and in-editor rendering.
-- **JavaScript/HTML/CSS**: Basic LSP and Treesitter syntax support.
-- **Lua**: Dedicated support for editing Neovim configurations.
+Interactive uninstallers prompt before removing each component:
+- **Linux**: `bash uninstall_linux.sh`
+- **macOS**: `bash uninstall_macos.sh`
+- **Windows**: `uninstall_windows.bat`
 
 ---
 
-### 8. LaTeX Snippets Reference
+## License & Third-Party Disclaimer
 
-The configuration includes a rich library of custom LaTeX snippets (`UltiSnips/tex.snippets`). Many snippets use **Auto-expand** (they trigger instantly without pressing `<Tab>`). Snippets marked with **Math Context** only trigger when inside a math environment (e.g., `$ ... $` or `\begin{equation}`).
+The [MIT License](LICENSE) in this repository applies **only to the configuration files, snippets, and installation scripts** authored in this repository.
 
-#### Environments & Document Structure
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `template` | Basic LaTeX document template | Any |
-| `beg` | `\begin{...} \end{...}` block | Any |
-| `table` | Table environment | Any |
-| `fig` | Figure environment | Any |
-| `enum` | Enumerate environment | Any |
-| `item` | Itemize environment | Any |
-| `desc` | Description environment | Any |
-| `pac` | `\usepackage{}` | Any |
-| `case` | `\begin{cases}` | Any |
-| `ali` | `\begin{align*}` | Any |
-| `bigfun` | Big function map (`\begin{align*}`) | Any |
-| `SI` | `\SI{value}{unit}` | Any |
-| `letw` | "Let $\Omega \subset \mathbb{C}$ be open." | Any |
-
-#### Math Mode Toggles
-| Trigger | Action |
-|---------|--------|
-| `mk` | Inline math (`$ ... $`) |
-| `dm` | Display math (`\[ ... \]` or `$$`) |
-
-#### Symbols & Constants
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `ooo` | `\infty` | Math |
-| `eps` | `\varepsilon` | Math |
-| `lll` | `\ell` | Math |
-| `nabl` | `\nabla` | Math |
-| `**` | `\cdot` | Math |
-| `xx` | `\times` | Math |
-
-#### Math Text & Fonts
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `txt` | `\text{...}` | Any |
-| `sts` | `_\text{...}` (Text subscript) | Any |
-| `mcal` | `\mathcal{...}` | Math |
-| `bf` | `\textbf{...}` | Math |
-
-#### Automatic Fractions, Powers & Subscripts
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `//` | `\frac{...}{...}` | Math |
-| `x/` | Converts `x/` to `\frac{x}{...}` | Math |
-| `(x+y)/` | Converts `(x+y)/` to `\frac{x+y}{...}` | Math |
-| `x1` | Converts to `x_1` (any letter + digit) | Any |
-| `x_12` | Converts to `x_{12}` | Any |
-| `__` | Subscript `_{...}` | Math |
-| `td` | Superscript `^{...}` | Math |
-| `sr` | Squared `^2` | Math |
-| `cb` | Cubed `^3` | Math |
-| `invs` | Inverse `^{-1}` | Math |
-| `cmpl` | Complement `^{c}` | Math |
-| `xnn` | `x_n` (also `ynn`, `xii`, `yii`, `xjj`, `yjj`, `xmm`) | Math |
-| `xp1` | `x_{n+1}` | Math |
-
-#### Logic & Relations
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `=>`, `=<` | `\implies`, `\impliedby` | Math |
-| `iff` | `\iff` | Math |
-| `==` | `&= ... \\` (Align equals) | Math |
-| `!=` | `\neq` | Math |
-| `<=`, `>=` | `\le`, `\ge` | Math |
-| `>>`, `<<` | `\gg`, `\ll` | Math |
-| `~~` | `\sim` | Math |
-| `->`, `!>` | `\to`, `\mapsto` | Math |
-| `<->` | `\leftrightarrow` | Math |
-| `<!` | `\triangleleft` | Math |
-| `<>` | `\diamond` | Math |
-
-#### Sets & Operators
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `set` | `\{ ... \}` | Math |
-| `inn`, `notin` | `\in`, `\not\in` | Math |
-| `sbst` | `\subset` | Math |
-| `Nn`, `UU` | `\cap`, `\cup` | Math |
-| `nnn`, `uuu`| `\bigcap`, `\bigcup` | Math |
-| `OO` | `\emptyset` | Math |
-| `\\\` | `\setminus` | Math |
-| `NN`, `RR`, `QQ`, `ZZ`, `DD`, `HH` | Blackboard bold `\mathbb{X}` | Math |
-| `R0+` | `\mathbb{R}_0^+` | Math |
-| `EE`, `AA`, `PP`, `Ee` | `\exists`, `\forall`, `\mathbb{P}`, `\mathbb{E}` | Math |
-
-#### Calculus, Limits & Integrals
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `sum` | `\sum_{...}^{...}` | Math |
-| `prod` | `\prod_{...}^{...}` | Math |
-| `lim`, `limsup`| `\lim_{n \to \infty}`, `\limsup` | Math |
-| `int` | `\int_{...}^{...}` | Math |
-| `part` | `\frac{\partial ...}{\partial ...}` | Math |
-| `taylor` | Taylor series expansion | Math |
-| `sqrt` | `\sqrt{...}` | Math |
-
-#### Brackets & Enclosures (Auto-expanding)
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `()`, `[]`, `{}` | `\left( \right)`, `\left[ \right]`, `\left\{ \right\}` | Math |
-| `||` | `\left\| \right\|` | Math |
-| `lra` | `\left< \right>` | Math |
-| `ceil`, `floor`| `\left\lceil \right\rceil`, `\left\lfloor \right\rfloor`| Any |
-| `norm` | `\| ... \|` | Math |
-| `conj` | `\overline{...}` | Math |
-| `bar`, `hat` | `\bar{...}`, `\hat{...}` (Auto-applied to previous character) | Math |
-
-#### Matrices & Vectors
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `pmat`, `bmat` | `\begin{pmatrix}`, `\begin{bmatrix}` | Math |
-| `cvec` | Column vector with `\vdots` | Math |
-| `rij` | `(x_n)_{n \in \mathbb{N}}` | Math |
-
-#### Auto-Triggers for Math Functions
-When in **math mode**, typing any of these followed by a space or non-alphabet character will auto-escape them with a backslash (e.g. typing `sin` automatically becomes `\sin`):  
-`sin`, `cos`, `arccot`, `cot`, `csc`, `ln`, `log`, `exp`, `star`, `perp`, `arcsin`, `arccos`, `arctan`, `pi`, `zeta`, `delta`, `kappa`, `lambda`, `mu`, `nu`, `rho`, `sigma`, `tau`, `omega`.
-
-#### Plotting & External Computation
-| Trigger | Action | Context |
-|---------|--------|---------|
-| `plot` | TikZ/PGFPlots 2D axis block | Any |
-| `surf` | TikZ/PGFPlots 3D surface block | Any |
-| `node` | TikZ node | Any |
-| `sympy` | Evaluate mathematical expression using SymPy | Any |
-| `math` | Evaluate mathematical expression using WolframScript | Any |
-
----
-
-### 9. Quick Start Guide
-
-#### Installation
-Automated installation scripts are provided for all major operating systems. They will install Neovim, Git, Node.js, Python, LaTeX distributions, PDF viewers, and all necessary dependencies. They also install the required **RobotoMono Nerd Font**.
-- **Windows:** Double-click `install_windows.bat` to run the installer. Make sure you have `winget` installed (it is usually pre-installed on modern Windows 10 and 11).
-- **macOS:** Open a terminal and run `bash install_macos.sh`. It uses Homebrew under the hood.
-- **Linux:** Open a terminal and run `bash install_linux.sh`. It automatically detects and supports `apt` (Ubuntu/Debian) and `pacman` (Arch Linux).
-
-The script also automatically copies the configuration files to the correct Neovim directory (`~/.config/nvim/` on Linux/macOS, `%USERPROFILE%\AppData\Local\nvim\` on Windows). No manual copy is needed.
-
-#### First Launch
-1. Open Neovim → The custom Dashboard appears.
-2. Press `f` to find files using FZF, or `e` to start a new blank file.
-3. Use `Ctrl-N` to toggle the file tree, `Ctrl-K` to see the document outline.
-
-#### LaTeX Workflow
-1. Create a `.tex` file.
-2. Write content. The file automatically saves every 3 seconds.
-3. Use `Ctrl-O` to force a compilation if needed.
-4. The configured PDF viewer (Zathura/Sumatra/Skim) will open and sync with your cursor location.
-5. Highlight text in Visual Mode and use `Alt-B` / `Alt-I` for bold/italic formatting, or `$` for math mode.
-
-#### Python Development
-1. Create a `.py` file.
-2. Write code with Pyright LSP providing real-time checking and autocomplete.
-3. Save the file: Black automatically formats your code to PEP-8 standards.
-4. Press `;r` (Leader + r) to run the script in an integrated side terminal.
-
-#### General Editing
-1. `<Alt-Space>` accepts Copilot suggestions.
-2. `Tab` expands snippets and moves between snippet placeholders.
-3. In Visual mode, wrap texts instantly by selecting them and pressing `"`, `'`, `(`, `[`, or `{`.
-4. Jump between window splits using `<Tab>` and `<Shift-Tab>`.
-
-#### Plugin Management
-- Type `:Lazy` to open the plugin manager interface.
-- Type `:Lazy sync` to update and synchronize all installed plugins.
-- Type `:checkhealth` to view Neovim diagnostic information and verify tool installations.
-
-#### Customization
-Depending on your OS, edit your configuration in the respective folder:
-- **Linux:** `linux/init.lua`
-- **Windows:** `windows/init.lua` (often linked to `C:/Users/Lorenzo/AppData/Local/nvim/init.lua`)
-- **macOS:** `macos/init.lua`
-
-**Common Modifications:**
-- Change the leader key: `lua/config/options.lua` -> `vim.g.mapleader`
-- Add new keymaps: `lua/config/keymaps.lua`
-- Modify theme or dashboard: `lua/plugins/ui.lua`
-- Add a new language: `lua/plugins/languages/`
-
----
-
-### Third-Party Plugin Disclaimer
-
-The MIT license included in this repository applies **only to the configuration files and scripts** written here (e.g., `init.lua`, plugin settings, key mappings, installation scripts, snippets, etc.).
-
-All third-party plugins referenced via the plugin manager (e.g., `lazy.nvim`, `vimtex`, `nvim-cmp`, etc.) are developed and maintained by their respective authors, and are **not included** in this repository nor covered by this license. Please refer to each plugin's own repository and license for their terms of use.
+All third-party Neovim plugins managed via `lazy.nvim` (e.g., `lazy.nvim`, `vimtex`, `LuaSnip`, `nvim-cmp`, `nvim-lspconfig`, `nvim-treesitter`, `conform.nvim`, `render-markdown.nvim`, `markdown-preview.nvim`, `copilot.vim`, etc.) are developed by their respective authors and remain governed by their own licenses.
